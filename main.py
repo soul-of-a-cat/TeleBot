@@ -9,7 +9,7 @@ TOKEN = '6250800263:AAHiZE1-C91jvjbtMW3SBFDgudK0Ef0Ajwc'
 bot = telebot.TeleBot(TOKEN)
 
 name, description, price, downloaded_file = '', '', 0, None
-number, pic = 0, None
+number, pic, pictures = 0, None, None
 
 
 @bot.message_handler(commands=['start'])
@@ -180,7 +180,7 @@ def creat(message):
 
 @bot.message_handler(content_types=['text'], commands=['search'])
 def search(message):
-    global number, pic
+    global number, pic, pictures
 
     db_sess = bd_session.create_session()
     p = db_sess.query(Pictures).all()
@@ -195,7 +195,7 @@ def search(message):
 
     @bot.message_handler(content_types=['text'])
     def buy_picture(message):
-        global number, pic
+        global number, pic, pictures
 
         if message.text in ['Купить', 'Покупаю', 'купить', 'покупаю']:
             pict = db_sess.query(Pictures).filter(Pictures.picture == pic).first()
@@ -213,9 +213,20 @@ def search(message):
         elif message.text in ['Идём дальше', 'Идем дальше', 'Дальше', 'дальше', 'идём дальше', 'идем дальше']:
             del pictures[number]
 
+            if len(pictures) == 0:
+                pictures = pictures1.copy()
+
             number = randrange(len(pictures))
             pic = pictures[number]
             bot.send_photo(message.from_user.id, open(f'pictures/{pic}', 'rb'))
+
+            pict = db_sess.query(Pictures).filter(Pictures.picture == pic).first()
+            pr = pict.cost
+            ds = pict.description
+
+            text = f'Описание данной картинки: {ds}\n' \
+                   f'Цена данной картинки: {pr}\n' \
+                   f'Дальше? Купить? Или выйти?'
 
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
             btn1 = types.KeyboardButton("Купить")
@@ -223,7 +234,7 @@ def search(message):
             btn3 = types.KeyboardButton("Выход")
             markup.add(btn1, btn2, btn3)
 
-            bot.send_message(message.from_user.id, 'Дальше? Купить? Или выйти?', reply_markup=markup)
+            bot.send_message(message.from_user.id, text, reply_markup=markup)
 
             bot.register_next_step_handler(message, buy_picture)
         else:
