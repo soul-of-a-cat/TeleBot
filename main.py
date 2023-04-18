@@ -329,7 +329,7 @@ def referal(message):
                     btn1 = types.KeyboardButton("Выйти")
                     markup.add(btn1)
 
-                    bot.send_message(message.from_user.id, 'К сожалению, ты уже активировали такой ключ. '
+                    bot.send_message(message.from_user.id, 'К сожалению, ты уже активировал(а) такой ключ. '
                                                            'Можешь попробовать ввести ключ ещё раз прямо сейчас или '
                                                            'уйти', reply_markup=markup)
 
@@ -347,6 +347,14 @@ def referal(message):
                                                            'только один раз. В следующий раз тебе придётся вводить '
                                                            'другой реферальный ключ',
                                      reply_markup=types.ReplyKeyboardRemove())
+
+                    db_sess = bd_session.create_session()
+                    useKey = UseKeys(
+                        user_id=message.from_user.id,
+                        key=message.text,
+                        )
+                    db_sess.add(useKey)
+                    db_sess.commit()
 
     @bot.message_handler(content_types=['text'])
     def ref_answer(message):
