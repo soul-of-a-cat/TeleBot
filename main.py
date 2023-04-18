@@ -352,7 +352,7 @@ def referal(message):
                     useKey = UseKeys(
                         user_id=message.from_user.id,
                         key=message.text,
-                        )
+                    )
                     db_sess.add(useKey)
                     db_sess.commit()
 
