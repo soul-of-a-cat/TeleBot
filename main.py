@@ -52,12 +52,12 @@ def get_text_messages(message):
 @bot.message_handler(commands=['help'])
 def help(message):
     bot.send_message(message.from_user.id, "Это бот для создания NFT картинок. Есть несколько команд:\n"
-                                           "1)/create - создаёт новую картинку\n"
-                                           "2)/search - выдаёт рандомную картинку для покупки\n"
-                                           "3)/leaders - список лидеров по загрузке/создания NFT\n"
-                                           "4)/referal - создание собственного или активация чужого реферального "
+                                           "/create - создаёт новую картинку\n"
+                                           "/search - выдаёт рандомную картинку для покупки\n"
+                                           "/leaders - список лидеров по загрузке/создания NFT\n"
+                                           "/referal - создание собственного или активация чужого реферального "
                                            "ключа\n"
-                                           "5)/balance - показывает твой баланс в данную секунду",
+                                           "/balance - показывает твой баланс в данную секунду",
                      reply_markup=types.ReplyKeyboardRemove())
 
 
@@ -126,6 +126,7 @@ def creat(message):
         if message.text in ['выйти', 'Выйти']:
             bot.send_message(message.from_user.id, 'Хорошо! Тогда в другой раз!',
                              reply_markup=types.ReplyKeyboardRemove())
+            return
         try:
             fileID = message.photo[-1].file_id
             file_info = bot.get_file(fileID)
@@ -172,6 +173,7 @@ def creat(message):
         else:
             bot.send_message(message.from_user.id, 'Хорошо! Тогда в другой раз!',
                              reply_markup=types.ReplyKeyboardRemove())
+            return
 
     bot.send_message(message.from_user.id, 'Введите название картинки')
 
@@ -189,7 +191,7 @@ def search(message):
     number = randrange(len(pictures))
     pic = pictures[number]
     bot.send_photo(message.from_user.id, open(f'pictures/{pic}', 'rb'))
-    pict = db_sess.query(Pictures).filter(Pictures.picture == pic).first()
+    pict = db_sess.query(Pictures).filter(Pictures.picture == pic, Pictures.user_id != message.from_user.id).first()
     pr = pict.cost
     ds = pict.description
 
@@ -220,7 +222,8 @@ def search(message):
             pic = pictures[number]
             bot.send_photo(message.from_user.id, open(f'pictures/{pic}', 'rb'))
 
-            pict = db_sess.query(Pictures).filter(Pictures.picture == pic).first()
+            pict = db_sess.query(Pictures).filter(Pictures.picture == pic,
+                                                  Pictures.user_id != message.from_user.id).first()
             pr = pict.cost
             ds = pict.description
 
@@ -240,6 +243,7 @@ def search(message):
         else:
             bot.send_message(message.from_user.id, 'Хорошо! Тогда в другой раз!',
                              reply_markup=types.ReplyKeyboardRemove())
+            return
 
     text = f'Описание данной картинки: {ds}\n' \
            f'Цена данной картинки: {pr}\n' \
@@ -291,6 +295,7 @@ def referal(message):
         if message.text in ['выйти', 'Выйти']:
             bot.send_message(message.from_user.id, 'Хорошо! Тогда в другой раз!',
                              reply_markup=types.ReplyKeyboardRemove())
+            return
 
         db_sess = bd_session.create_session()
         user = db_sess.query(Users).filter(Users.id == message.from_user.id).first()
@@ -378,6 +383,7 @@ def referal(message):
             else:
                 bot.send_message(message.from_user.id, 'У тебя уже есть реферальный ключ',
                                  reply_markup=types.ReplyKeyboardRemove())
+            return
         elif message.text == 'Вспомнить':
             db_sess = bd_session.create_session()
             user = db_sess.query(Users).filter(Users.id == message.from_user.id).first()
@@ -395,6 +401,7 @@ def referal(message):
             else:
                 bot.send_message(message.from_user.id, f'Твой реферальный ключ: {user.creatkey}',
                                  reply_markup=types.ReplyKeyboardRemove())
+                return
         elif message.text == 'Активировать':
             bot.send_message(message.from_user.id, 'Можешь вводить ключ')
 
@@ -402,6 +409,7 @@ def referal(message):
         else:
             bot.send_message(message.from_user.id, 'Хорошо! Тогда в другой раз!',
                              reply_markup=types.ReplyKeyboardRemove())
+            return
 
     db_sess = bd_session.create_session()
     user = db_sess.query(Users).filter(Users.id == message.from_user.id).first()
