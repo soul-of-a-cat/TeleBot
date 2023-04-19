@@ -8,28 +8,31 @@ TOKEN = '6250800263:AAHiZE1-C91jvjbtMW3SBFDgudK0Ef0Ajwc'
 
 bot = telebot.TeleBot(TOKEN)
 
-name, description, price, downloaded_file = '', '', 0, None
-number, pic, pictures = 0, None, None
+name, description, price, downloaded_file = '', '', 0, None # Для добавления картинки
+number, pic, pictures = 0, None, None # Для отправки картинки пользователю
 
 
 @bot.message_handler(commands=['start'])
-def get_text_messages(message):
+def get_text_messages(message): # Команда старт при самом первом запуске бота
     db_sess = bd_session.create_session()
-    user = Users(
-        id=message.from_user.id,
-        name=message.from_user.username,
-        money=10000,
-        images=0,
-        creatkey='')
-    db_sess.add(user)
-    db_sess.commit()
+    u = db_sess.query(Users).all()
+    user_all = [us.id for us in u]
+    if message.from_user.id not in user_all: # Проверка есть ли такой id в db
+        user = Users(
+            id=message.from_user.id,
+            name=message.from_user.username,
+            money=10000,
+            images=0,
+            creatkey='')
+        db_sess.add(user)
+        db_sess.commit()
 
     bot.send_message(message.from_user.id, "Привет мальчикам - зайчикам, девочкам - белочкам! "
                                            "Чем я могу тебе помочь?")
 
 
 @bot.message_handler(content_types=['text'])
-def get_text_messages(message):
+def get_text_messages(message): # Основной текстовый метод (всё начинается от сюда)
     if message.text == "Привет":
         bot.send_message(message.from_user.id, "Привет мальчикам - зайчикам, девочкам - белочкам! "
                                                "Чем я могу тебе помочь?")
@@ -50,7 +53,7 @@ def get_text_messages(message):
 
 
 @bot.message_handler(commands=['help'])
-def help(message):
+def help(message): # Команда help
     bot.send_message(message.from_user.id, "Это бот для создания NFT картинок. Есть несколько команд:\n"
                                            "/create - создаёт новую картинку\n"
                                            "/search - выдаёт рандомную картинку для покупки\n"
@@ -62,18 +65,18 @@ def help(message):
 
 
 @bot.message_handler(content_types=['text', 'photo'], commands=['create'])
-def creat(message):
+def creat(message): # Создание картинки и добавление в db
     @bot.message_handler(content_types=['text'])
-    def name_picture(message):
+    def name_picture(message): # Получение названия картинки
         global name
 
         name = message.text
 
         db_sess = bd_session.create_session()
         p = db_sess.query(Pictures).all()
-        pictures = [picture.picture for picture in p]
+        pictures = [picture.picture for picture in p] # Список имён уже существующих картинок
 
-        if f'{name}.jpg' in pictures:
+        if f'{name}.jpg' in pictures: # Проверка есть ли такое название картинки
             bot.send_message(message.from_user.id, 'Прости, картинка с таким именем уже есть. Придумай другое')
             bot.register_next_step_handler(message, name_picture)
         else:
@@ -81,7 +84,7 @@ def creat(message):
             bot.register_next_step_handler(message, description_picture)
 
     @bot.message_handler(content_types=['text'])
-    def description_picture(message):
+    def description_picture(message): # Получение описания картинки
         global description
 
         description = message.text
@@ -90,7 +93,7 @@ def creat(message):
         bot.register_next_step_handler(message, price_picture)
 
     @bot.message_handler(content_types=['text'])
-    def price_picture(message):
+    def price_picture(message): # Получение цены картинки
         global price
 
         if message.text in ['выйти', 'Выйти']:
@@ -120,7 +123,7 @@ def creat(message):
             bot.register_next_step_handler(message, price_picture)
 
     @bot.message_handler(content_types=['photo'])
-    def photo(message):
+    def photo(message): # Получение картинки
         global downloaded_file
 
         if message.text in ['выйти', 'Выйти']:
@@ -144,6 +147,7 @@ def creat(message):
 
             bot.register_next_step_handler(message, photo)
         try:
+            # Списывание средств за публикацию и +1 в db к опубликованным картинкам
             db_sess = bd_session.create_session()
             user = db_sess.query(Users).filter(Users.id == message.from_user.id).first()
             user.money -= price * 0.05
@@ -154,18 +158,20 @@ def creat(message):
                 picture=f'{name}.jpg',
                 cost=price,
                 description=description)
-            db_sess.add(picture)
+            db_sess.add(picture) # Добавление в db всё о картинке
             db_sess.commit()
 
             bot.send_message(message.from_user.id, 'Спасибочки, милашка! Твоя картинка добавлена в базу данных!',
                              reply_markup=types.ReplyKeyboardRemove())
+            return
         except Exception:
             bot.send_message(message.from_user.id, 'Прости! Возникла какая-то ошибка. Я не могу решить её сама.'
                                                    'Давай ты попробуешь ещё раз с самого начала, но в другой раз',
                              reply_markup=types.ReplyKeyboardRemove())
+            return
 
     @bot.message_handler(content_types=['text'])
-    def continue_picture(message):
+    def continue_picture(message): # Вопрос: хочет ли пользователь опубликовать картинку (заплатить за публикацию)
         global flag
         if message.text in ['Да', 'Конечно', 'Давай', 'Продолжаем', 'да', 'конечно', 'давай', 'продолжаем']:
             bot.send_message(message.from_user.id, 'Отправьте картинку', reply_markup=types.ReplyKeyboardRemove())
@@ -181,25 +187,25 @@ def creat(message):
 
 
 @bot.message_handler(content_types=['text'], commands=['search'])
-def search(message):
+def search(message): # Покупка картинки
     global number, pic, pictures
 
     db_sess = bd_session.create_session()
     p = db_sess.query(Pictures).all()
-    pictures = [picture.picture for picture in p]
-    pictures1 = [picture.picture for picture in p]
+    pictures = [picture.picture for picture in p] # Все название картинок в db
+    pictures1 = [picture.picture for picture in p] # Тоже самое, но резерв (дальше нужно будет)
     number = randrange(len(pictures))
     pic = pictures[number]
-    bot.send_photo(message.from_user.id, open(f'pictures/{pic}', 'rb'))
+    bot.send_photo(message.from_user.id, open(f'pictures/{pic}', 'rb')) # Отправка картинки пользователю
     pict = db_sess.query(Pictures).filter(Pictures.picture == pic, Pictures.user_id != message.from_user.id).first()
     pr = pict.cost
     ds = pict.description
 
     @bot.message_handler(content_types=['text'])
-    def buy_picture(message):
+    def buy_picture(message): # Покупка картинки (купить, дальше, выйти)
         global number, pic, pictures
 
-        if message.text in ['Купить', 'Покупаю', 'купить', 'покупаю']:
+        if message.text in ['Купить', 'Покупаю', 'купить', 'покупаю']: # Сама покупка, списание денег
             pict = db_sess.query(Pictures).filter(Pictures.picture == pic).first()
             pr = pict.cost
             us_id = pict.user_id
@@ -212,18 +218,29 @@ def search(message):
 
             bot.send_message(message.from_user.id, 'Ты только что купил эту картинку. ПОЗДРАВЛЯЮ С ПРЕОБРЕТЕНИЕМ!',
                              reply_markup=types.ReplyKeyboardRemove())
+            return
         elif message.text in ['Идём дальше', 'Идем дальше', 'Дальше', 'дальше', 'идём дальше', 'идем дальше']:
             del pictures[number]
-
-            if len(pictures) == 0:
+            # Повторная отправка (если "дальше")
+            if len(pictures) == 0: # Обнавление списка названий картинок
                 pictures = pictures1.copy()
 
             number = randrange(len(pictures))
             pic = pictures[number]
-            bot.send_photo(message.from_user.id, open(f'pictures/{pic}', 'rb'))
-
+            # Получение картинок других пользователей (не данного картинок пользователя)
             pict = db_sess.query(Pictures).filter(Pictures.picture == pic,
                                                   Pictures.user_id != message.from_user.id).first()
+
+            if pict is None or len(pict) == 0: # Если в db только картинки от одного пользователя
+                bot.send_message(message.from_user.id, 'Прости, в моей базе данных нет других картинок, кроме твоих! '
+                                                       'Дождись пока другие пользователи опубликуют свои картинки',
+                                 reply_markup=types.ReplyKeyboardRemove())
+                return
+
+
+            bot.send_photo(message.from_user.id, open(f'pictures/{pic}', 'rb'))
+
+
             pr = pict.cost
             ds = pict.description
 
@@ -261,8 +278,8 @@ def search(message):
 
 
 @bot.message_handler(commands=['leaders'])
-def leaders(message):
-    def num_sort(strn):
+def leaders(message): # Список лидеров
+    def num_sort(strn): # Сортировка
         computed_num = [ele for ele in strn.split() if ele.isdigit()]
 
         if len(computed_num) > 0:
@@ -289,9 +306,9 @@ def leaders(message):
 
 
 @bot.message_handler(commands=['referal'], content_types=['text'])
-def referal(message):
+def referal(message): # Реферальный ключ
     @bot.message_handler(content_types=['text'])
-    def active_key(message):
+    def active_key(message): # Активация ключа
         if message.text in ['выйти', 'Выйти']:
             bot.send_message(message.from_user.id, 'Хорошо! Тогда в другой раз!',
                              reply_markup=types.ReplyKeyboardRemove())
@@ -300,7 +317,7 @@ def referal(message):
         db_sess = bd_session.create_session()
         user = db_sess.query(Users).filter(Users.id == message.from_user.id).first()
 
-        if user.creatkey == message.text:
+        if user.creatkey == message.text: # Если пользователь ввёл свой собственный ключ
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
             btn1 = types.KeyboardButton("Выйти")
             markup.add(btn1)
@@ -315,7 +332,7 @@ def referal(message):
         else:
             user = db_sess.query(Users).filter(Users.creatkey == message.text).first()
 
-            if user is None or len(user) == 0:
+            if user is None or len(user) == 0: # Если такого ключа нет в db
                 markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
                 btn1 = types.KeyboardButton("Выйти")
                 markup.add(btn1)
@@ -329,7 +346,7 @@ def referal(message):
             else:
                 key = db_sess.query(UseKeys).filter(UseKeys.key == message.text).first()
 
-                if message.from_user.id in key.user_id:
+                if message.from_user.id in key.user_id: # Проверка на повторную активация уже активированного ключа
                     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
                     btn1 = types.KeyboardButton("Выйти")
                     markup.add(btn1)
@@ -339,7 +356,7 @@ def referal(message):
                                                            'уйти', reply_markup=markup)
 
                     bot.register_next_step_handler(message, active_key)
-                else:
+                else: # Все условия для активации выполнены (не свой; существующий; ещё не активировал)
                     user = db_sess.query(Users).filter(Users.id == message.from_user.id).first()
                     user.money += 5000
                     db_sess.commit()
@@ -360,20 +377,21 @@ def referal(message):
                     )
                     db_sess.add(useKey)
                     db_sess.commit()
+                    return
 
     @bot.message_handler(content_types=['text'])
-    def ref_answer(message):
-        if message.text == 'Создать':
+    def ref_answer(message): # Главный метод (создать, вспомнить, активировать)
+        if message.text == 'Создать': # Создание ключа
             db_sess = bd_session.create_session()
             user = db_sess.query(Users).filter(Users.id == message.from_user.id).first()
-            if user.creatkey == '':
+            if user.creatkey == '': # Проверка если ли у пользователя ключ
                 chars = '+-/*!&$#?=@<>abcdefghijklnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890'
-                while True:
+                while True: # Создание ключа
                     password = ''
                     for i in range(16):
                         password += choice(chars)
                     keys = db_sess.query(Users).filter(Users.creatkey).all()
-                    if password not in keys:
+                    if password not in keys: # Проверка есть ли такой ключ в db
                         break
                 user = db_sess.query(Users).filter(Users.id == message.from_user.id).first()
                 user.creatkey = password
@@ -384,10 +402,10 @@ def referal(message):
                 bot.send_message(message.from_user.id, 'У тебя уже есть реферальный ключ',
                                  reply_markup=types.ReplyKeyboardRemove())
             return
-        elif message.text == 'Вспомнить':
+        elif message.text == 'Вспомнить': # Если забыл свой ключ
             db_sess = bd_session.create_session()
             user = db_sess.query(Users).filter(Users.id == message.from_user.id).first()
-            if user.creatkey == '':
+            if user.creatkey == '': # Проверка есть ли у пользователя ключ
                 markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
                 btn1 = types.KeyboardButton("Создать")
                 btn2 = types.KeyboardButton("Активировать")
@@ -402,18 +420,18 @@ def referal(message):
                 bot.send_message(message.from_user.id, f'Твой реферальный ключ: {user.creatkey}',
                                  reply_markup=types.ReplyKeyboardRemove())
                 return
-        elif message.text == 'Активировать':
+        elif message.text == 'Активировать': # Активация ключа
             bot.send_message(message.from_user.id, 'Можешь вводить ключ')
 
             bot.register_next_step_handler(message, active_key)
-        else:
+        else: #
             bot.send_message(message.from_user.id, 'Хорошо! Тогда в другой раз!',
                              reply_markup=types.ReplyKeyboardRemove())
             return
 
     db_sess = bd_session.create_session()
     user = db_sess.query(Users).filter(Users.id == message.from_user.id).first()
-    if user.creatkey == '':
+    if user.creatkey == '': # Проверка есть ли у пользователя ключ
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         btn1 = types.KeyboardButton("Создать")
         btn2 = types.KeyboardButton("Активировать")
@@ -423,7 +441,7 @@ def referal(message):
         bot.send_message(message.from_user.id,
                          'У тебя нет реферального ключа. Создать? Или ты хочешь активировать ключ?',
                          reply_markup=markup)
-    else:
+    else: # Если ли у пользователя есть ключ
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
         btn1 = types.KeyboardButton("Вспомнить")
         btn2 = types.KeyboardButton("Активировать")
@@ -438,7 +456,7 @@ def referal(message):
 
 
 @bot.message_handler(commands=['balance'], content_types=['text'])
-def balance(message):
+def balance(message): # Баланс пользователя
     db_sess = bd_session.create_session()
     user = db_sess.query(Users).filter(Users.id == message.from_user.id).first()
     balance = user.money
