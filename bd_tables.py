@@ -23,7 +23,6 @@ class Pictures(SqlAlchemyBase):
     picture = Column(String, nullable=False)
     cost = Column(Float, nullable=False)
     description = Column(String, nullable=False)
-    buy_id = Column(String, ForeignKey('users.id'))
 
     def __repr__(self):
         return f'<Picture> {self.id} {self.user_id}'
