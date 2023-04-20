@@ -1,7 +1,7 @@
 import telebot
 from telebot import types
 import bd_session
-from bd_tables import Users, Pictures, UseKeys
+from bd_tables import Users, Pictures, UseKeys, BuyPictures
 from random import randrange, choice
 
 TOKEN = '6250800263:AAHiZE1-C91jvjbtMW3SBFDgudK0Ef0Ajwc'
@@ -221,7 +221,10 @@ def search(message):  # Покупка картинки
             pict = db_sess.query(Pictures).filter(Pictures.picture == pic).first()
             pr = pict.cost
             us_id = pict.user_id
-            pict.buy_id = message.from_user.id
+            picture = BuyPictures(
+                user_id=message.from_user.id,
+                picture=pic)
+            db_sess.add(picture)  # Купленные картинки
             db_sess.commit()
             user = db_sess.query(Users).filter(Users.id == message.from_user.id).first()
             user.money -= pr
@@ -241,6 +244,7 @@ def search(message):  # Покупка картинки
 
             number = randrange(len(pictures))
             pic = pictures[number]
+            db_sess = bd_session.create_session()
             # Получение картинок других пользователей (не данного картинок пользователя)
             pict = db_sess.query(Pictures).filter(Pictures.picture == pic,
                                                   Pictures.user_id != message.from_user.id).first()
@@ -481,7 +485,7 @@ def mypictures(message):
     for i in pictures:
         text += f'{count}. {i}\n'
         count += 1
-    pic = db_sess.query(Pictures).filter(Pictures.buy_id == message.from_user.id).all()
+    pic = db_sess.query(BuyPictures).filter(BuyPictures.user_id == message.from_user.id).all()
     pictures = set([picture.picture for picture in pic])
     text += 'Твои купленные картинки, дорогой(ая):\n'
     count = 1

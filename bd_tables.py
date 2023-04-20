@@ -38,3 +38,14 @@ class UseKeys(SqlAlchemyBase):
 
     def __repr__(self):
         return f'<Picture> {self.id} {self.user_id}'
+
+
+class BuyPictures(SqlAlchemyBase):
+    __tablename__ = 'buyPictures'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String, ForeignKey('users.id'))
+    picture = Column(String, nullable=False)
+
+    def __repr__(self):
+        return f'<Picture> {self.id} {self.user_id}'
