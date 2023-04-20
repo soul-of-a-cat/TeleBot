@@ -13,7 +13,7 @@ number, pic, pictures = 0, None, None  # Для отправки картинк�
 
 
 @bot.message_handler(commands=['start'])
-def get_text_messages(message):  # Команда старт при самом первом запуске бота
+def start(message):  # Команда старт при самом первом запуске бота
     db_sess = bd_session.create_session()
     u = db_sess.query(Users).all()
     user_all = [us.id for us in u]
@@ -48,6 +48,10 @@ def get_text_messages(message):  # Основной текстовый мето�
         referal(message)
     elif message.text == '/balance':
         balance(message)
+    elif message.text == '/mypictures':
+        mypictures(message)
+    elif message.text == '/open':
+        openpictures(message)
     else:
         bot.send_message(message.from_user.id, "Дорогой(ая), я тебя не понимаю. Напиши /help.")
 
@@ -60,7 +64,9 @@ def help(message):  # Команда help
                                            "/leaders - список лидеров по загрузке/создания NFT\n"
                                            "/referal - создание собственного или активация чужого реферального "
                                            "ключа\n"
-                                           "/balance - показывает твой баланс в данную секунду",
+                                           "/balance - показывает твой баланс в данную секунду\n"
+                                           "/mypictures - выводит список названий твоих картинок\n"
+                                           "/open - выводит твою картинку по названию",
                      reply_markup=types.ReplyKeyboardRemove())
 
 
@@ -460,6 +466,60 @@ def balance(message):  # Баланс пользователя
 
     bot.send_message(message.from_user.id,
                      f'В данную секунду твой баланс составляет: {balance}')
+
+
+@bot.message_handler(commands=['mypictures'], content_types=['text'])
+def mypictures(message):
+    db_sess = bd_session.create_session()
+    pic = db_sess.query(Pictures).filter(Pictures.user_id == message.from_user.id).all()
+    pictures = [picture.picture for picture in pic]
+    text = 'Твои картинки, дорогой(ая):\n'
+    count = 1
+    for i in pictures:
+        text += f'{count}. {i}\n'
+
+    bot.send_message(message.from_user.id,
+                     f'{text}Посмотреть картинки можно с помощью команды /open')
+
+
+@bot.message_handler(commands=['open'], content_types=['text'])
+def openpictures(message):
+    @bot.message_handler(content_types=['text'])
+    def openpic(message):
+        if message.text in ['выйти', 'Выйти']:
+            bot.send_message(message.from_user.id, 'Пока!❤️ Надеюсь ещё увидимся!',
+                             reply_markup=types.ReplyKeyboardRemove())
+            return
+
+        db_sess = bd_session.create_session()
+        pic = db_sess.query(Pictures).all()
+        pictures = [picture.picture for picture in pic]
+        if message.text not in pictures:
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            btn1 = types.KeyboardButton("Выйти")
+            markup.add(btn1)
+
+            bot.send_message(message.from_user.id, 'Сожалею, но картинки с таким названием у меня нет. '
+                                                   'Проверь всё ещё раз и введи прваильно. Пример название - '
+                                                   '"name_picture.jpg". Или можешь просто уйти и попробовать в '
+                                                   'другой раз', reply_markup=markup)
+
+            bot.register_next_step_handler(message, openpic)
+        else:
+            bot.send_photo(message.from_user.id, open(f'pictures/{message.text}', 'rb'))
+
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+            btn1 = types.KeyboardButton("Выйти")
+            markup.add(btn1)
+
+            bot.send_message(message.from_user.id, 'Для тебя всё, что угодно, поэтому можешь вводить названия '
+                                                   'картинки, пока тебе не надоест. Если хочешь выйти - введи "Выйти"',
+                             reply_markup=markup)
+
+            bot.register_next_step_handler(message, openpic)
+
+    bot.send_message(message.from_user.id, 'Введи название картинки')
+    bot.register_next_step_handler(message, openpic)
 
 
 bd_session.global_init("bd/telebot.sqlite")
