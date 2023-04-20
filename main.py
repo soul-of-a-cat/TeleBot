@@ -61,7 +61,7 @@ def help(message):  # Команда help
     bot.send_message(message.from_user.id, "Это бот для создания NFT картинок. Есть несколько команд:\n"
                                            "/create - создаёт новую картинку\n"
                                            "/search - выдаёт рандомную картинку для покупки\n"
-                                           "/leaders - список лидеров по загрузке/создания NFT\n"
+                                           "/leaders - список лидеров по загрузке/созданию картинок\n"
                                            "/referal - создание собственного или активация чужого реферального "
                                            "ключа\n"
                                            "/balance - показывает твой баланс в данную секунду\n"
@@ -217,9 +217,12 @@ def search(message):  # Покупка картинки
         global number, pic, pictures
 
         if message.text in ['Купить', 'Покупаю', 'купить', 'покупаю']:  # Сама покупка, списание денег
+            db_sess = bd_session.create_session()
             pict = db_sess.query(Pictures).filter(Pictures.picture == pic).first()
             pr = pict.cost
             us_id = pict.user_id
+            pict.buy_id = message.from_user.id
+            db_sess.commit()
             user = db_sess.query(Users).filter(Users.id == message.from_user.id).first()
             user.money -= pr
             db_sess.commit()
@@ -473,10 +476,18 @@ def mypictures(message):
     db_sess = bd_session.create_session()
     pic = db_sess.query(Pictures).filter(Pictures.user_id == message.from_user.id).all()
     pictures = [picture.picture for picture in pic]
-    text = 'Твои картинки, дорогой(ая):\n'
+    text = 'Твои опубликованные картинки, дорогой(ая):\n'
     count = 1
     for i in pictures:
         text += f'{count}. {i}\n'
+        count += 1
+    pic = db_sess.query(Pictures).filter(Pictures.buy_id == message.from_user.id).all()
+    pictures = set([picture.picture for picture in pic])
+    text += 'Твои купленные картинки, дорогой(ая):\n'
+    count = 1
+    for i in pictures:
+        text += f'{count}. {i}\n'
+        count += 1
 
     bot.send_message(message.from_user.id,
                      f'{text}Посмотреть картинки можно с помощью команды /open')
