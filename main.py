@@ -407,7 +407,8 @@ def referal(message):  # Реферальный ключ
                 user.creatkey = password
                 db_sess.commit()
 
-                bot.send_message(message.from_user.id, f'Твой реферальный ключ: {password}')
+                bot.send_message(message.from_user.id, f'Твой реферальный ключ: {password}',
+                                 reply_markup=types.ReplyKeyboardRemove())
             else:
                 bot.send_message(message.from_user.id, 'У тебя уже есть реферальный ключ',
                                  reply_markup=types.ReplyKeyboardRemove())
