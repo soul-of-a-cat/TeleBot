@@ -191,17 +191,17 @@ def search(message):  # Покупка картинки
     global number, pic, pictures
 
     db_sess = bd_session.create_session()
-    p = db_sess.query(Pictures).all()
+    p = db_sess.query(Pictures).filter(Pictures.user_id != message.from_user.id).all()
     pictures = [picture.picture for picture in p]  # Все название картинок в db
     pictures1 = [picture.picture for picture in p]  # Тоже самое, но резерв (дальше нужно будет)
-    number = randrange(len(pictures))
-    pic = pictures[number]
-    pict = db_sess.query(Pictures).filter(Pictures.picture == pic, Pictures.user_id != message.from_user.id).first()
-    if pict is None:  # Если в db только картинки от одного пользователя
+    if len(pictures) == 0:
         bot.send_message(message.from_user.id, 'Прости, в моей базе данных нет других картинок, кроме твоих! '
                                                'Дождись пока другие пользователи опубликуют свои картинки',
                          reply_markup=types.ReplyKeyboardRemove())
         return
+    number = randrange(len(pictures))
+    pic = pictures[number]
+    pict = db_sess.query(Pictures).filter(Pictures.picture == pic, Pictures.user_id != message.from_user.id).first()
     bot.send_photo(message.from_user.id, open(f'pictures/{pic}', 'rb'))  # Отправка картинки пользователю
     pr = pict.cost
     ds = pict.description
@@ -235,12 +235,6 @@ def search(message):  # Покупка картинки
             # Получение картинок других пользователей (не данного картинок пользователя)
             pict = db_sess.query(Pictures).filter(Pictures.picture == pic,
                                                   Pictures.user_id != message.from_user.id).first()
-
-            if pict is None:  # Если в db только картинки от одного пользователя
-                bot.send_message(message.from_user.id, 'Прости, в моей базе данных нет других картинок, кроме твоих! '
-                                                       'Дождись пока другие пользователи опубликуют свои картинки',
-                                 reply_markup=types.ReplyKeyboardRemove())
-                return
 
             bot.send_photo(message.from_user.id, open(f'pictures/{pic}', 'rb'))
 
@@ -349,17 +343,7 @@ def referal(message):  # Реферальный ключ
             else:
                 key = db_sess.query(UseKeys).filter(UseKeys.key == message.text).first()
 
-                if message.from_user.id in key.user_id:  # Проверка на повторную активация уже активированного ключа
-                    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-                    btn1 = types.KeyboardButton("Выйти")
-                    markup.add(btn1)
-
-                    bot.send_message(message.from_user.id, 'К сожалению, ты уже активировал(а) такой ключ. '
-                                                           'Можешь попробовать ввести ключ ещё раз прямо сейчас или '
-                                                           'уйти', reply_markup=markup)
-
-                    bot.register_next_step_handler(message, active_key)
-                else:  # Все условия для активации выполнены (не свой; существующий; ещё не активировал)
+                if key is None:  # Все условия для активации выполнены (не свой; существующий; ещё не активировал)
                     user = db_sess.query(Users).filter(Users.id == message.from_user.id).first()
                     user.money += 5000
                     db_sess.commit()
@@ -381,6 +365,16 @@ def referal(message):  # Реферальный ключ
                     db_sess.add(useKey)
                     db_sess.commit()
                     return
+                else:
+                    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+                    btn1 = types.KeyboardButton("Выйти")
+                    markup.add(btn1)
+
+                    bot.send_message(message.from_user.id, 'К сожалению, ты уже активировал(а) такой ключ. '
+                                                           'Можешь попробовать ввести ключ ещё раз прямо сейчас или '
+                                                           'уйти', reply_markup=markup)
+
+                    bot.register_next_step_handler(message, active_key)
 
     @bot.message_handler(content_types=['text'])
     def ref_answer(message):  # Главный метод (создать, вспомнить, активировать)
