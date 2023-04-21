@@ -2,7 +2,7 @@
 
 ## Иконка:
 
-![](../../Downloads/pictures/botlogo.png)
+![](pictures/botlogo.png)
 
 ## Описание бота:
 
