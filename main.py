@@ -4,7 +4,7 @@ import bd_session
 from bd_tables import Users, Pictures, UseKeys, BuyPictures
 from random import randrange, choice
 
-TOKEN = '6250800263:AAHiZE1-C91jvjbtMW3SBFDgudK0Ef0Ajwc'
+TOKEN = ''
 
 bot = telebot.TeleBot(TOKEN)
 
